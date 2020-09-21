@@ -13,6 +13,13 @@ void ioSetup() {
   ioLedMask(0);
 }
 
+uint8_t ioScanOnce() {
+  return digitalRead(PIN_BTN_1) |
+         (digitalRead(PIN_BTN_2) << 1) |
+         (digitalRead(PIN_BTN_3) << 2) |
+         (digitalRead(PIN_BTN_4) << 3);
+}
+
 uint8_t ioScan(const uint16_t cycles) {
   uint16_t cyclesRemaining = cycles;
   uint8_t b1;
@@ -34,4 +41,3 @@ void ioLedMask(const uint8_t mask) {
   digitalWrite(PIN_LED_3, mask & 4);
   digitalWrite(PIN_LED_4, mask & 8);
 }
-

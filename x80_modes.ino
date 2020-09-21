@@ -53,6 +53,20 @@ void modeCountdown() {
   }
 }
 
+uint8_t modeCalcBits(uint8_t ratio) {
+  switch (ratio) {
+    case 0: return 0b00000000;
+    case 1: return 0b10000000;
+    case 2: return 0b11000000;
+    case 3: return 0b11100000;
+    case 4: return 0b11110000;
+    case 5: return 0b11111000;
+    case 6: return 0b11111100;
+    case 7: return 0b11111110;
+    default: return 0b11111111;
+  }
+}
+
 // picks one button at random, lights up the correct led, shows hint image and waits for pressing this button
 // wait time lowers with score, goes to buttonOk or fail modes
 void modeButtonWait() {
@@ -66,13 +80,29 @@ void modeButtonWait() {
     case 3: dispSetImage(imgBtn4); break;
   }
 
-  uint16_t t = 100 - min(90, mScore / 2);
+  uint16_t t = 100 - min(90, mScore * 2 / 3);
+  uint16_t tNow = t;
+  uint8_t b1;
+  do {
+    uint8_t ratio = map(tNow, 0, t, 0, 31);
+    dispFramebuffer[0] = modeCalcBits(ratio);
+    dispFramebuffer[1] = ratio < 8 ? 0 : modeCalcBits(ratio - 8);
+    dispFramebuffer[2] = ratio < 16 ? 0 : modeCalcBits(ratio - 16);
+    dispFramebuffer[3] = ratio < 24 ? 0 : modeCalcBits(ratio - 24);
+    dispUpdate();
 
-  if (ioScan(t) == 1 << btn) {
-    modeSet(&modeButtonOk);
-  } else {
-    modeSet(&modeFail);
-  }
+    b1 = ioScanOnce();
+    if (b1 == 1 << btn) {
+      modeSet(&modeButtonOk);
+      return;
+    } else if (b1 != 0) {
+      modeSet(&modeFail);
+      return;
+    }
+    delay(2); // adjusted for display update rate
+  } while (tNow--);
+
+  modeSet(&modeFail);
 }
 
 // plays sound, shows highscore and then goes to buttonWait again
@@ -104,13 +134,13 @@ void modeFail() {
   uint8_t cnt = 10;
   while (cnt--) {
     dispShowNumber(mScore);
-    if (modeBlinkAndWait(3, 20, 10, &modeReady)) return;
+    if (modeBlinkAndWait(3, 20, 10, &modeCountdown)) return;
     if (isHi) {
       dispSetImage(imgHiscore);
     } else {
       dispSetImage(imgFail);
     }
-    if (modeBlinkAndWait(3, 20, 10, &modeReady)) return;
+    if (modeBlinkAndWait(3, 20, 10, &modeCountdown)) return;
   }
 
   modeSet(&modeReady);
